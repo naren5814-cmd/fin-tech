@@ -17,6 +17,9 @@ function WalletCard() {
 
   // Auto refresh when page focus again
   useEffect(() => {
+    fetch("https://127.0.0.1:8000/wallet/fa0f64d1-3516-4bd5-8db2-548020e184a7")
+    .then(res => res.json())
+    .then(data => setBalance(data.balance));
     window.addEventListener("focus", loadData);
 
     return () => {
