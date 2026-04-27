@@ -1,0 +1,200 @@
+from fastapi import FastAPI, Body, HTTPException
+import requests
+from fastapi.middleware.cors import CORSMiddleware
+from config import SUPABASE_URL, SUPABASE_KEY
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # React URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+headers = {
+    "apikey": SUPABASE_KEY,
+    "Authorization": f"Bearer {SUPABASE_KEY}",
+    "Content-Type": "application/json",
+    "Prefer": "return=representation"
+}
+
+@app.get("/")
+def home():
+    return {"message": "Backend Working"}
+
+# Get Wallet Balance
+@app.get("/wallet/{user_id}")
+def get_wallet(user_id: str):
+    url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{user_id}&select=*"
+    res = requests.get(url, headers=headers)
+    data = res.json()
+
+    if not data:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    return {
+        "user_id": user_id,
+        "balance": data[0]["balance"]
+    }
+
+
+# Add Transaction
+@app.post("/user_transaction")
+def add_transaction(data: dict = Body(...)):
+
+    user_id = data["user_id"]
+    amount = data["amount"]
+    t_type = data["type"].lower()
+
+    # Amount validation
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than zero")
+
+    # Type validation
+    if t_type not in ["credit", "debit"]:
+        raise HTTPException(status_code=400, detail="Invalid transaction type")
+
+    # Check wallet
+    wallet_url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{user_id}&select=*"
+    wallet_res = requests.get(wallet_url, headers=headers).json()
+
+    if not wallet_res:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    balance = wallet_res[0]["balance"]
+
+    # Debit validation
+    if t_type == "debit" and amount > balance:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+
+    # Insert transaction
+    url = f"{SUPABASE_URL}/rest/v1/user_transaction"
+
+    payload = {
+        "user_id": user_id,
+        "type": t_type,
+        "amount": amount,
+        "description": data.get("description", "")
+    }
+
+    res = requests.post(url, headers=headers, json=payload)
+
+    return {
+        "success": True,
+        "message": "Transaction added successfully",
+        "data": res.json()
+    }
+
+
+# Get Transaction History
+@app.get("/user_transaction/{user_id}")
+def get_transactions(user_id: str):
+    url = f"{SUPABASE_URL}/rest/v1/user_transaction?user_id=eq.{user_id}&select=*&order=id.desc&limit=10"
+    res = requests.get(url, headers=headers)
+    return {
+        "user_id": user_id,
+        "transactions": res.json()
+    }
+
+@app.post("/send-money")
+def send_money(data: dict = Body(...)):
+
+    sender_id = data["sender_id"]
+    receiver_mobile = data["receiver_mobile"]
+    amount = data["amount"]
+    description = data.get("description", "Money Transfer")
+
+    # 1. Validation
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than zero")
+
+    # 2. Find receiver by mobile number
+    user_url = f"{SUPABASE_URL}/rest/v1/user_signup?mobile_number=eq.{receiver_mobile}&select=id,name"
+    user_res = requests.get(user_url, headers=headers).json()
+
+    if not user_res:
+        raise HTTPException(status_code=404, detail="Receiver not found")
+
+    receiver_id = user_res[0]["id"]
+    receiver_name = user_res[0]["name"]
+
+    # 3. Prevent self transfer
+    if sender_id == receiver_id:
+        raise HTTPException(status_code=400, detail="Cannot send money to yourself")
+
+    # 4. Check sender wallet balance
+    wallet_url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{sender_id}&select=*"
+    wallet_res = requests.get(wallet_url, headers=headers).json()
+
+    if not wallet_res:
+        raise HTTPException(status_code=404, detail="Sender wallet not found")
+
+    sender_balance = wallet_res[0]["balance"]
+
+    if amount > sender_balance:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+
+    # 5. Insert sender debit transaction
+    tx_url = f"{SUPABASE_URL}/rest/v1/user_transaction"
+
+    sender_payload = {
+        "user_id": sender_id,
+        "receiver_id": receiver_id,
+        "receiver_mobile": receiver_mobile,
+        "receiver_name": receiver_name,
+        "type": "debit",
+        "amount": amount,
+        "description": description
+    }
+
+    requests.post(tx_url, headers=headers, json=sender_payload)
+
+    # 6. Insert receiver credit transaction
+    receiver_payload = {
+        "user_id": receiver_id,
+        "receiver_id": sender_id,
+        "type": "credit",
+        "amount": amount,
+        "description": f"Received from transfer"
+    }
+
+    requests.post(tx_url, headers=headers, json=receiver_payload)
+
+    return {
+        "success": True,
+        "message": f"₹{amount} sent successfully to {receiver_name}"
+    }
+
+@app.post("/account-details")
+def save_account(data: dict = Body(...)):
+
+    user_id = data["user_id"]
+    name = data["name"]
+    mobile = data["mobile_number"]
+    account = data["account_number"]
+    ifsc = data["ifsc_code"]
+
+    # duplicate account check
+    check_url = f"{SUPABASE_URL}/rest/v1/user_signup?account_number=eq.{account}&select=id"
+    check_res = requests.get(check_url, headers=headers).json()
+
+    if check_res and check_res[0]["id"] != user_id:
+        raise HTTPException(status_code=400, detail="Account already exist")
+
+    url = f"{SUPABASE_URL}/rest/v1/user_signup?id=eq.{user_id}"
+
+    payload = {
+        "name": name,
+        "mobile_number": mobile,
+        "account_number": account,
+        "ifsc_code": ifsc
+    }
+
+    requests.patch(url, headers=headers, json=payload)
+
+    return {
+        "success": True,
+        "message": "Account details saved"
+    }
