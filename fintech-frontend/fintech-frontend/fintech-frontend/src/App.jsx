@@ -5,6 +5,7 @@ import WalletCard from "./pages/WalletCard";
 import TransactionForm from "./pages/TransactionForm";
 import TransactionHistory from "./pages/TransactionHistory";
 import Account from "./pages/Account";
+import AddMoney from "./pages/AddMoney";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/transaction" element={<TransactionForm />} />
           <Route path="/history" element={<TransactionHistory />} />
           <Route path="/account" element={<Account />} />
+          <Route path="/add-money" element={<AddMoney />} />
         </Routes>
       </div>
     </>

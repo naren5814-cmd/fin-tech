@@ -12,6 +12,7 @@ function WalletCard() {
   }, []);
 
   const loadData = async () => {
+    try{
     // wallet balance
     const walletRes = await fetch(
       `http://127.0.0.1:8000/wallet/${userId}`
@@ -26,6 +27,43 @@ function WalletCard() {
     const txData = await txRes.json();
 
     setHistory((txData.transactions || txData).slice(0, 5));
+  } catch(error) {
+    console.log("Load Error:", error)
+  }
+  };
+
+  const handleAddMoney = async () => {
+    const amount = prompt("Enter amount");
+
+    if (!amount) return;
+
+    try {
+      const res = await fetch(
+        "http://127.0.0.1:8000/add-money",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            amount: Number(amount),
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (data.success) {
+        alert("Money Added Successfully");
+        loadData();
+      } else {
+        alert(data.detail || "Failed");
+      }
+    } catch (error) {
+      console.log(error);
+      alert("Server Error");
+    }
   };
 
   return (
@@ -52,21 +90,30 @@ function WalletCard() {
         </div>
       ))}
 
-       <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-        <button
-          className="btn"
-          onClick={() => navigate("/transaction")}
-        >
-          Transaction
-        </button>
+      <div style={{ display:"flex", gap:"10px", marginTop:"20px" }}>
 
-        <button
-          className="btn"
-          onClick={() => navigate("/history")}
-        >
-          History
-        </button>
-      </div>
+  <button
+    className="btn"
+    onClick={() => navigate("/add-money")}
+  >
+    Add Money
+  </button>
+
+  <button
+    className="btn"
+    onClick={() => navigate("/transaction")}
+  >
+    Send Money
+  </button>
+
+  <button
+    className="btn"
+    onClick={() => navigate("/history")}
+  >
+    History
+  </button>
+
+</div>
 
     </div>
   );
