@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LogoutButton from "../Pages/LogoutButton";
 
 function Account() {
   const navigate = useNavigate();
@@ -62,6 +63,11 @@ function Account() {
         <button type="submit" className="btn">
           Submit
         </button>
+
+        <div style={{ marginTop: "15px" }}>
+          <LogoutButton />
+        </div>
+
       </form>
     </div>
   );

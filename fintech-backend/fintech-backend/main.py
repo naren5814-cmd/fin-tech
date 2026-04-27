@@ -101,70 +101,93 @@ def get_transactions(user_id: str):
 @app.post("/send-money")
 def send_money(data: dict = Body(...)):
 
-    sender_id = data["sender_id"]
+    sender_id = str(data["sender_id"])
     receiver_mobile = data["receiver_mobile"]
-    amount = data["amount"]
-    description = data.get("description", "Money Transfer")
+    amount = float(data["amount"])
 
-    # 1. Validation
+    if not receiver_mobile:
+        raise HTTPException(status_code=400, detail="Enter mobile number")
+
     if amount <= 0:
-        raise HTTPException(status_code=400, detail="Amount must be greater than zero")
+        raise HTTPException(status_code=400, detail="Invalid amount")
 
-    # 2. Find receiver by mobile number
+    # Find receiver
     user_url = f"{SUPABASE_URL}/rest/v1/user_signup?mobile_number=eq.{receiver_mobile}&select=id,name"
     user_res = requests.get(user_url, headers=headers).json()
 
     if not user_res:
         raise HTTPException(status_code=404, detail="Receiver not found")
 
-    receiver_id = user_res[0]["id"]
+    receiver_id = str(user_res[0]["id"])
     receiver_name = user_res[0]["name"]
 
-    # 3. Prevent self transfer
+    # Self transfer block
     if sender_id == receiver_id:
-        raise HTTPException(status_code=400, detail="Cannot send money to yourself")
+        raise HTTPException(status_code=400, detail="Cannot send to yourself")
 
-    # 4. Check sender wallet balance
-    wallet_url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{sender_id}&select=*"
-    wallet_res = requests.get(wallet_url, headers=headers).json()
+    # Sender wallet
+    sender_url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{sender_id}&select=*"
+    sender_wallet = requests.get(sender_url, headers=headers).json()
 
-    if not wallet_res:
+    if not sender_wallet:
         raise HTTPException(status_code=404, detail="Sender wallet not found")
 
-    sender_balance = wallet_res[0]["balance"]
+    sender_balance = float(sender_wallet[0]["balance"])
 
     if amount > sender_balance:
         raise HTTPException(status_code=400, detail="Insufficient balance")
 
-    # 5. Insert sender debit transaction
+    # Receiver wallet
+    receiver_url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{receiver_id}&select=*"
+    receiver_wallet = requests.get(receiver_url, headers=headers).json()
+
+    if not receiver_wallet:
+        raise HTTPException(status_code=404, detail="Receiver wallet not found")
+
+    receiver_balance = float(receiver_wallet[0]["balance"])
+
+    # Update sender balance
+    new_sender = sender_balance - amount
+
+    requests.patch(
+        f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{sender_id}",
+        headers=headers,
+        json={"balance": new_sender}
+    )
+
+    # Update receiver balance
+    new_receiver = receiver_balance + amount
+
+    requests.patch(
+        f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{receiver_id}",
+        headers=headers,
+        json={"balance": new_receiver}
+    )
+
+    # Insert sender history
     tx_url = f"{SUPABASE_URL}/rest/v1/user_transaction"
 
-    sender_payload = {
+    requests.post(tx_url, headers=headers, json={
         "user_id": sender_id,
         "receiver_id": receiver_id,
-        "receiver_mobile": receiver_mobile,
         "receiver_name": receiver_name,
         "type": "debit",
         "amount": amount,
-        "description": description
-    }
+        "description": "Money Sent"
+    })
 
-    requests.post(tx_url, headers=headers, json=sender_payload)
-
-    # 6. Insert receiver credit transaction
-    receiver_payload = {
+    # Insert receiver history
+    requests.post(tx_url, headers=headers, json={
         "user_id": receiver_id,
         "receiver_id": sender_id,
         "type": "credit",
         "amount": amount,
-        "description": f"Received from transfer"
-    }
-
-    requests.post(tx_url, headers=headers, json=receiver_payload)
+        "description": "Money Received"
+    })
 
     return {
         "success": True,
-        "message": f"₹{amount} sent successfully to {receiver_name}"
+        "message": f"₹{amount} sent to {receiver_name}"
     }
 
 @app.post("/account-details")
