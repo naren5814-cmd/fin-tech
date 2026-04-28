@@ -221,3 +221,43 @@ def save_account(data: dict = Body(...)):
         "success": True,
         "message": "Account details saved"
     }
+
+# ==============================
+# ADD THIS IN main.py (FastAPI)
+# Dashboard API
+# ==============================
+
+@app.get("/dashboard/{user_id}")
+def dashboard(user_id: str):
+
+    # Wallet Balance
+    wallet_url = f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{user_id}&select=*"
+    wallet_res = requests.get(wallet_url, headers=headers).json()
+
+    balance = 0
+    if wallet_res:
+        balance = wallet_res[0]["balance"]
+
+    # Transactions
+    tx_url = f"{SUPABASE_URL}/rest/v1/user_transaction?user_id=eq.{user_id}&select=*"
+    tx_res = requests.get(tx_url, headers=headers).json()
+
+    total_credit = 0
+    total_debit = 0
+
+    for item in tx_res:
+        if item["type"] == "credit":
+            total_credit += item["amount"]
+        elif item["type"] == "debit":
+            total_debit += item["amount"]
+
+    recent = tx_res[-5:][::-1]
+
+    return {
+        "success": True,
+        "balance": balance,
+        "total_credit": total_credit,
+        "total_debit": total_debit,
+        "transaction_count": len(tx_res),
+        "recent_transactions": recent
+    }

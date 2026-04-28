@@ -1,83 +1,65 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function WalletCard() {
+function Home() {
+  const navigate = useNavigate();
+
   const [balance, setBalance] = useState(0);
   const [history, setHistory] = useState([]);
 
-  const navigate = useNavigate();
   const userId = localStorage.getItem("user_id");
   const userName =
     localStorage.getItem("name") || "User";
 
   useEffect(() => {
-    if (userId) {
-      loadData();
-    }
-  }, []);
-
-  useEffect(() => {
-    window.addEventListener(
-      "focus",
-      loadData
-    );
-
-    return () => {
-      window.removeEventListener(
-        "focus",
-        loadData
-      );
-    };
+    loadData();
   }, []);
 
   const loadData = async () => {
     try {
+      // Wallet
       const walletRes = await fetch(
         `http://127.0.0.1:8000/wallet/${userId}`
       );
+      const walletData = await walletRes.json();
 
-      const walletData =
-        await walletRes.json();
+      setBalance(walletData.balance || 0);
 
-      setBalance(
-        walletData.balance || 0
-      );
-
+      // Recent History
       const txRes = await fetch(
         `http://127.0.0.1:8000/user_transaction/${userId}`
       );
 
-      const txData =
-        await txRes.json();
+      const txData = await txRes.json();
 
       setHistory(
-        (
-          txData.transactions || []
-        ).slice(0, 5)
+        (txData.transactions || []).slice(0, 3)
       );
     } catch (error) {
       console.log(error);
     }
   };
 
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
+  };
+
   const actionCard = (
     title,
-    icon,
-    path
+    sub,
+    click,
+    icon
   ) => (
     <div
       style={styles.actionCard}
-      onClick={() =>
-        navigate(path)
-      }
+      onClick={click}
     >
-      <div style={styles.icon}>
-        {icon}
-      </div>
-
-      <p style={styles.actionText}>
+      <div style={styles.icon}>{icon}</div>
+      <h4 style={styles.actionTitle}>
         {title}
-      </p>
+      </h4>
+      <p style={styles.actionSub}>{sub}</p>
     </div>
   );
 
@@ -87,64 +69,84 @@ function WalletCard() {
       <div style={styles.header}>
         <div>
           <p style={styles.small}>
-            Wallet Overview 👋
+            Welcome back 👋
           </p>
 
-          <h2 style={styles.name}>
+          <h1 style={styles.name}>
             {userName}
-          </h2>
+          </h1>
         </div>
+
+        <button
+          style={styles.logoutBtn}
+          onClick={handleLogout}
+        >
+          Logout
+        </button>
       </div>
 
-      {/* Balance Card */}
+      {/* Wallet Card */}
       <div style={styles.walletCard}>
-        <p style={styles.label}>
+        <p style={styles.walletLabel}>
           Available Balance
         </p>
 
-        <h1 style={styles.balance}>
+        <h2 style={styles.balance}>
           ₹{balance}
-        </h1>
+        </h2>
 
-        <p style={styles.sub}>
+        <p style={styles.walletSub}>
           Updated just now
         </p>
       </div>
 
       {/* Actions */}
-      <h3 style={styles.section}>
+      <h3 style={styles.sectionTitle}>
         Quick Actions
       </h3>
 
       <div style={styles.grid}>
         {actionCard(
           "Add Money",
-          "💳",
-          "/add-money"
+          "Top up wallet instantly",
+          () => navigate("/addmoney"),
+          "💳"
         )}
 
         {actionCard(
           "Send Money",
-          "📤",
-          "/transaction"
+          "Transfer securely",
+          () =>
+            navigate("/transaction"),
+          "📤"
         )}
 
         {actionCard(
           "History",
-          "📜",
-          "/history"
+          "See all transactions",
+          () => navigate("/history"),
+          "📜"
+        )}
+
+        
+
+        {actionCard(
+          "Account",
+          "Manage profile",
+          () => navigate("/account"),
+          "👤"
         )}
       </div>
 
-      {/* Recent */}
-      <h3 style={styles.section}>
-        Recent Transactions
+      {/* Recent Activity */}
+      <h3 style={styles.sectionTitle}>
+        Recent Activity
       </h3>
 
       <div style={styles.historyBox}>
         {history.length === 0 ? (
           <p style={styles.empty}>
-            No transactions found
+            No transactions yet
           </p>
         ) : (
           history.map((item) => (
@@ -156,8 +158,7 @@ function WalletCard() {
                 <p
                   style={{
                     margin: 0,
-                    fontWeight:
-                      "600",
+                    fontWeight: "600",
                   }}
                 >
                   {item.receiver_name ||
@@ -167,8 +168,7 @@ function WalletCard() {
 
                 <small
                   style={{
-                    color:
-                      "#64748B",
+                    color: "#64748B",
                   }}
                 >
                   {item.type}
@@ -177,8 +177,7 @@ function WalletCard() {
 
               <span
                 style={{
-                  fontWeight:
-                    "700",
+                  fontWeight: "700",
                   color:
                     item.type ===
                     "credit"
@@ -196,6 +195,28 @@ function WalletCard() {
           ))
         )}
       </div>
+
+      {/* Insight Card */}
+      <div style={styles.insight}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "14px",
+          }}
+        >
+          Smart Insight
+        </p>
+
+        <h3
+          style={{
+            marginTop: "8px",
+          }}
+        >
+          Keep tracking your daily
+          spending for better
+          savings 💡
+        </h3>
+      </div>
     </div>
   );
 }
@@ -205,14 +226,17 @@ const styles = {
     maxWidth: "1000px",
     margin: "auto",
     padding: "28px",
-    background:
-      "#F8FAFC",
-    minHeight: "100vh",
     fontFamily: "Arial",
+    background: "#F8FAFC",
+    minHeight: "100vh",
   },
 
   header: {
-    marginBottom: "20px",
+    display: "flex",
+    justifyContent:
+      "space-between",
+    alignItems: "center",
+    marginBottom: "24px",
   },
 
   small: {
@@ -222,39 +246,49 @@ const styles = {
 
   name: {
     margin: "6px 0 0 0",
-    fontSize: "30px",
+    fontSize: "34px",
+  },
+
+  logoutBtn: {
+    border: "none",
+    padding: "10px 18px",
+    borderRadius: "10px",
+    background: "#EF4444",
+    color: "white",
+    cursor: "pointer",
+    fontWeight: "600",
   },
 
   walletCard: {
     background:
       "linear-gradient(135deg,#4F46E5,#06B6D4)",
     color: "white",
-    padding: "28px",
+    padding: "30px",
     borderRadius: "22px",
     boxShadow:
-      "0 16px 30px rgba(79,70,229,0.20)",
+      "0 18px 35px rgba(79,70,229,0.20)",
     marginBottom: "26px",
   },
 
-  label: {
+  walletLabel: {
     margin: 0,
     opacity: 0.9,
   },
 
   balance: {
-    margin:
-      "12px 0",
+    margin: "12px 0",
     fontSize: "42px",
   },
 
-  sub: {
+  walletSub: {
     margin: 0,
-    fontSize: "14px",
     opacity: 0.8,
+    fontSize: "14px",
   },
 
-  section: {
+  sectionTitle: {
     marginBottom: "16px",
+    marginTop: "10px",
   },
 
   grid: {
@@ -266,29 +300,31 @@ const styles = {
   },
 
   actionCard: {
-    background:
-      "white",
+    background: "white",
+    padding: "18px",
     borderRadius: "18px",
-    padding: "20px",
-    textAlign:
-      "center",
     cursor: "pointer",
     boxShadow:
       "0 10px 24px rgba(0,0,0,0.06)",
+    transition: "0.2s",
   },
 
   icon: {
     fontSize: "28px",
   },
 
-  actionText: {
-    marginTop: "10px",
-    fontWeight: "600",
+  actionTitle: {
+    margin: "12px 0 6px 0",
+  },
+
+  actionSub: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#64748B",
   },
 
   historyBox: {
-    background:
-      "white",
+    background: "white",
     padding: "20px",
     borderRadius: "18px",
     boxShadow:
@@ -299,10 +335,8 @@ const styles = {
     display: "flex",
     justifyContent:
       "space-between",
-    alignItems:
-      "center",
-    padding:
-      "14px 0",
+    alignItems: "center",
+    padding: "14px 0",
     borderBottom:
       "1px solid #E5E7EB",
   },
@@ -311,6 +345,15 @@ const styles = {
     color: "#64748B",
     margin: 0,
   },
+
+  insight: {
+    marginTop: "26px",
+    background:
+      "linear-gradient(135deg,#0F172A,#1E293B)",
+    color: "white",
+    padding: "24px",
+    borderRadius: "18px",
+  },
 };
 
-export default WalletCard;
+export default Home;

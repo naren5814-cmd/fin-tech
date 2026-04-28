@@ -6,7 +6,8 @@ function Navbar() {
       <h2 className="logo">FinTech</h2>
 
       <div className="nav-links">
-        <Link to="/">Home</Link>
+        <Link to="/Home">Home</Link>
+        <Link to="/Dashboard">Dashboard</Link>
         <Link to="/wallet">Wallet</Link>
         <Link to="/transaction">Transaction</Link>
         <Link to="/history">History</Link>

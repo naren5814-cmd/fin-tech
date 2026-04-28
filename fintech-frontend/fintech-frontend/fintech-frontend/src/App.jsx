@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import WalletCard from "./pages/WalletCard";
 import TransactionForm from "./pages/TransactionForm";
@@ -14,7 +15,8 @@ function App() {
 
       <div className="app-wrapper">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/wallet" element={<WalletCard />} />
           <Route path="/transaction" element={<TransactionForm />} />
           <Route path="/history" element={<TransactionHistory />} />
