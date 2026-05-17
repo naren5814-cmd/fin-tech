@@ -33,7 +33,7 @@ function TransactionForm() {
     }
 
     try {
-      const res = await fetch(`https://fintech-backend-nmk7.onrender.com/user-by-mobile/${clean}`);
+      const res = await fetch(`http://127.0.0.1:8000/user-by-mobile/${clean}`);
       const data = await res.json();
       if (data.success) {
         setReceiverName(data.name);
@@ -81,12 +81,12 @@ function TransactionForm() {
       user_id: userId,
       receiver_mobile: mobile,
       amount: parseFloat(amount),
-      description: note || "No Note", // Matching 'descriptior' spelling in DB
+      descriptior: note || "No Note", // Matching 'descriptior' spelling in DB
       tx_uuid: current_tx_id
     };
 
     try {
-      const res = await fetch("https://fintech-backend-nmk7.onrender.com/send-money", {
+      const res = await fetch("http://127.0.0.1:8000/send-money", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

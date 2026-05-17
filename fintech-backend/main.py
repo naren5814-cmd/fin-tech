@@ -95,26 +95,26 @@ async def signup(data: dict = Body(...)):
             if res.status_code not in [200, 201]:
                 raise HTTPException(500, res.text)
 
-            # =========================
-            # CHECK WALLET EXISTS
-            # =========================
+                # =========================
+                # CHECK WALLET EXISTS
+                # =========================
 
-            wallet_check_url = (
-                f"{SUPABASE_URL}/rest/v1/{WALLET_TABLE}"
-                f"?user_id=eq.{user_id}&select=id"
-            )
+                wallet_check_url = (
+                    f"{SUPABASE_URL}/rest/v1/{WALLET_TABLE}"
+                    f"?user_id=eq.{user_id}&select=id"
+                )
 
-            wallet_check = await client.get(wallet_check_url, headers=headers)
+                wallet_check = await client.get(wallet_check_url, headers=headers)
 
-            wallet_data = wallet_check.json()
-            print("WALLET CHECK:", wallet_data)
+                wallet_data = wallet_check.json()
+                print("WALLET CHECK:", wallet_data)
 
-            # ========================
-            # CREATE ONLY IF NOT EXISTS
-            # =========================
+                # ========================
+                # CREATE ONLY IF NOT EXISTS
+                # =========================
 
-            if len(wallet_data) == 0:
-                wallet_payload = {"user_id": user_id, "balance": 0}
+                if len(wallet_data) == 0:
+                    wallet_payload = {"user_id": user_id, "balance": 0}
 
                 wallet_res = await client.post(
                     f"{SUPABASE_URL}/rest/v1/{WALLET_TABLE}",
@@ -315,46 +315,29 @@ async def get_wallet(user_id: str):
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-# ===============================================
+# =====================================================
 # SEND MONEY
-# ===============================================
-
-
+# =====================================================
 @app.post("/send-money")
 async def send_money(data: dict = Body(...)):
     print("======== TRANSACTION START ========")
     try:
-        # =========================
-        # EXTRACT DATA
-        # =========================
+
+        # 1. Extraction & Validation
         tx_uuid = data.get("tx_uuid")
         sender_id = data.get("user_id")
-        receiver_mobile = str(data.get("receiver_mobile", "")).replace(" ", "")
+        receiver_mobile = data.get("receiver_mobile")
         amount = float(data.get("amount", 0))
         note = data.get("description", "No Note")
 
-        print(
-            f"TX ID: {tx_uuid} | SENDER: {sender_id} | RECEIVER: {receiver_mobile} | AMOUNT: {amount}"
-        )
-
-        # =========================
-        # VALIDATION (Blocks 0, Negatives, and Missing Fields)
-        # =========================
         if not tx_uuid:
             raise HTTPException(status_code=400, detail="Transaction ID missing")
-        if not sender_id:
-            raise HTTPException(status_code=400, detail="Sender ID missing")
-        if not receiver_mobile:
-            raise HTTPException(status_code=400, detail="Receiver mobile missing")
+
         if amount <= 0:
-            raise HTTPException(
-                status_code=400, detail="Invalid amount. Must be greater than 0."
-            )
+            raise HTTPException(status_code=400, detail="Invalid amount")
 
         async with httpx.AsyncClient(timeout=15) as client:
-            # =========================
-            # IDEMPOTENCY CHECK
-            # =========================
+            # 2. Idempotency Check (Prevention of double payments)
             check_url = (
                 f"{SUPABASE_URL}/rest/v1/user_transaction?id=eq.{tx_uuid}&select=id"
             )
@@ -362,9 +345,7 @@ async def send_money(data: dict = Body(...)):
             if len(check_res.json()) > 0:
                 return {"success": True, "message": "Already processed"}
 
-            # =========================
-            # GET RECEIVER
-            # =========================
+            # 3. Get Receiver Data
             rx_res = await client.get(
                 f"{SUPABASE_URL}/rest/v1/user_account?mobile_number=eq.{receiver_mobile}&select=user_id,name",
                 headers=headers,
@@ -376,81 +357,10 @@ async def send_money(data: dict = Body(...)):
             receiver_id = rx_data[0]["user_id"]
             receiver_name = rx_data[0]["name"]
 
-            # =========================
-            # BLOCK SELF TRANSFER
-            # =========================
-            if sender_id == receiver_id:
-                raise HTTPException(
-                    status_code=400, detail="Cannot send money to yourself"
-                )
-
-            # =========================
-            # GET WALLETS (Fetch balance data first)
-            # =========================
-            sender_wallet_res = await client.get(
-                f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{sender_id}&select=*",
-                headers=headers,
-            )
-            sender_wallet_data = sender_wallet_res.json()
-            if not sender_wallet_data:
-                raise HTTPException(status_code=404, detail="Sender wallet not found")
-
-            receiver_wallet_res = await client.get(
-                f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{receiver_id}&select=*",
-                headers=headers,
-            )
-            receiver_wallet_data = receiver_wallet_res.json()
-            if not receiver_wallet_data:
-                raise HTTPException(status_code=404, detail="Receiver wallet not found")
-
-            # =========================
-            # PARSE BALANCES & SAFETY CHECKS
-            # =========================
-            sender_balance = max(0.0, float(sender_wallet_data[0]["balance"]))
-            receiver_balance = max(0.0, float(receiver_wallet_data[0]["balance"]))
-
-            print(
-                f"SENDER WALLET BALANCE: {sender_balance} | RECEIVER WALLET BALANCE: {receiver_balance}"
-            )
-
-            # =========================
-            # BALANCE VALIDATION
-            # =========================
-            if sender_balance == 0 or amount > sender_balance:
-                raise HTTPException(status_code=400, detail=sender_balance)
-
-            # =========================
-            # CALCULATE NEW BALANCES
-            # =========================
-            new_sender_balance = round(sender_balance - amount, 2)
-            new_receiver_balance = round(receiver_balance + amount, 2)
-
-            if new_sender_balance < 0:
-                raise HTTPException(status_code=400, detail=new_sender_balance)
-
-            # =========================
-            # UPDATE SENDER WALLET
-            # =========================
-            sender_update = await client.patch(
-                f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{sender_id}",
-                headers=headers,
-                json={"balance": new_sender_balance},
-            )
-
-            # =========================
-            # UPDATE RECEIVER WALLET
-            # =========================
-            await client.patch(
-                f"{SUPABASE_URL}/rest/v1/user_wallet?user_id=eq.{receiver_id}",
-                headers=headers,
-                json={"balance": new_receiver_balance},
-            )
-
-            # =========================
-            # SAVE HISTORY
-            # =========================
-            history_entry = {
-                "id": tx_uuid,
+            # 4. Save History (Insert into user_transaction)
+            # Mapping tx_uuid from frontend to 'id' column in DB
+            debit_history = {
+                "id": tx_uuid,  # Indha 'id' thaan unga DB-la key column
                 "user_id": sender_id,
                 "receiver_id": receiver_id,
                 "receiver_name": receiver_name,
@@ -461,22 +371,39 @@ async def send_money(data: dict = Body(...)):
                 "created_at": datetime.utcnow().isoformat(),
             }
 
-            save_res = await client.post(
+            debit_res = await client.post(
                 f"{SUPABASE_URL}/rest/v1/user_transaction",
                 headers=headers,
-                json=history_entry,
+                json=debit_history,
             )
 
-            if save_res.status_code not in [200, 201]:
-                print("DB SAVE ERROR:", save_res.text)
-                raise HTTPException(status_code=500, detail="Insuffiecient Balance")
-
-            print("======== SUCCESS ========")
-            return {
-                "success": True,
-                "message": "Transaction successful",
-                "balance": new_sender_balance,
+            credit_history = {
+                "id": str(uuid.uuid4()),
+                "user_id": receiver_id,
+                "receiver_id": sender_id,
+                "receiver_name": "Money Received",
+                "receiver_mobile": receiver_mobile,
+                "amount": amount,
+                "type": "credit",
+                "description": note,
+                "created_at": datetime.utcnow().isoformat(),
             }
+
+            credit_res = await client.post(
+                f"{SUPABASE_URL}/rest/v1/user_transaction",
+                headers=headers,
+                json=credit_history,
+            )
+
+            if debit_res.status_code not in [200, 201]:
+                print(f"Error saving DB: {debit_res.text}")
+                raise HTTPException(status_code=500, detail="Insufficient Balance")
+
+            if credit_res.status_code not in [200, 201]:
+                print(f"Error saving DB: {credit_res.text}")
+                raise HTTPException(status_code=500, detail="Insufficient Balance")
+
+            return {"success": True, "message": "Transaction successful"}
 
     except HTTPException as e:
         print("HTTP ERROR:", e.detail)
@@ -629,14 +556,19 @@ async def add_money(data: dict = Body(...)):
 
 @app.get("/transactions/{user_id}")
 async def get_transactions(user_id: str):
-
+    # 1. TABLE NAME MUST MATCH SCREENSHOT EXACTLY
     TX_TABLE_FIXED = "user_transaction"
 
     print(f"DEBUG: Fetching for User ID -> {user_id}")
 
     try:
-
-        url = f"{SUPABASE_URL}/rest/v1/{TX_TABLE_FIXED}?select=*"
+        # Step A: Filter illama full table-a fetch panni check pannuvom
+        url = (
+            f"{SUPABASE_URL}/rest/v1/user_transaction"
+            f"?user_id=eq.{user_id}"
+            f"&select=*"
+            f"&order=created_at.desc"
+        )
 
         async with httpx.AsyncClient(timeout=15) as client:
             res = await client.get(url, headers=headers)
@@ -648,10 +580,11 @@ async def get_transactions(user_id: str):
             all_data = res.json()
             print(f"DEBUG: Total rows in DB: {len(all_data)}")
 
-        # Step B: Manual Filtering
+        # Step B: Manual Filtering (Type issues-a avoid panna)
         cleaned = []
         for item in all_data:
-
+            # Table-la irukka user_id-um namma anupura user_id-um match aaganum
+            # Strip() use panna unnecessary spaces thavirkalam
             db_user_id = str(item.get("user_id", "")).strip()
             req_user_id = str(user_id).strip()
 
