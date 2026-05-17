@@ -36,10 +36,26 @@
 
 body {
   margin: 0;
-  padding: 0;
-  font-family: "Poppins", sans-serif;
-  background: #F9FAFB;
-  
+  font-family: Arial, sans-serif;
+  background: #f8fafc;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .container {
