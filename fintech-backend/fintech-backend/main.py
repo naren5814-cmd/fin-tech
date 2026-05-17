@@ -323,10 +323,11 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException, Body
 import httpx
 
+
 @app.post("/send-money")
 async def send_money(data: dict = Body(...)):
     print("======== TRANSACTION START ========")
-    
+
     # 1. Extraction & Validation
     tx_uuid = data.get("tx_uuid")
     sender_id = data.get("user_id")
@@ -347,19 +348,19 @@ async def send_money(data: dict = Body(...)):
         # 3. Get Receiver Data
         rx_res = await client.get(
             f"{SUPABASE_URL}/rest/v1/user_account?mobile_number=eq.{receiver_mobile}&select=user_id,name",
-            headers=headers
+            headers=headers,
         )
         rx_data = rx_res.json()
         if not rx_data:
             raise HTTPException(status_code=404, detail="Receiver not found")
-        
+
         receiver_id = rx_data[0]["user_id"]
         receiver_name = rx_data[0]["name"]
 
         # 4. Save History (Insert into user_transaction)
         # Mapping tx_uuid from frontend to 'id' column in DB
         history_entry = {
-            "id": tx_uuid, # Indha 'id' thaan unga DB-la key column
+            "id": tx_uuid,  # Indha 'id' thaan unga DB-la key column
             "user_id": sender_id,
             "receiver_id": receiver_id,
             "receiver_name": receiver_name,
@@ -367,18 +368,18 @@ async def send_money(data: dict = Body(...)):
             "amount": amount,
             "type": "debit",
             "description": note,
-            "created_at": datetime.utcnow().isoformat()
+            "created_at": datetime.utcnow().isoformat(),
         }
 
         save_res = await client.post(
             f"{SUPABASE_URL}/rest/v1/user_transaction",
             headers=headers,
-            json=history_entry
+            json=history_entry,
         )
 
         if save_res.status_code not in [200, 201]:
             print(f"Error saving DB: {save_res.text}")
-            raise HTTPException(status_code=500, detail="Database save failed")
+            raise HTTPException(status_code=500, detail="Insufficient Balance")
 
         return {"success": True, "message": "Transaction successful"}
 
