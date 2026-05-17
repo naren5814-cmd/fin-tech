@@ -16,7 +16,7 @@ function HealthScore() {
         localStorage.getItem("user_id");
 
       const res = await fetch(
-        `https://fintech-backend-nmk7.onrender.com/health-score/${userId}`
+        `http://127.0.0.1:8000/health-score/${userId}`
       );
 
       const result = await res.json();

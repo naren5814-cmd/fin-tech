@@ -32,7 +32,7 @@ function Home() {
       // =========================
 
       const walletRes = await fetch(
-        `https://fintech-backend-nmk7.onrender.com/wallet/${userId}`
+        `http://127.0.0.1:8000/wallet/${userId}`
       );
 
       const walletData =
@@ -61,7 +61,7 @@ function Home() {
       // =========================
 
       const txRes = await fetch(
-        `https://fintech-backend-nmk7.onrender.com/transactions/${userId}`
+        `http://127.0.0.1:8000/transactions/${userId}`
       );
 
       const txData =
@@ -119,7 +119,7 @@ try {
   console.log("FETCHING WALLET");
 
   const walletRes = await fetch(
-    `https://fintech-backend-nmk7.onrender.com/wallet/${userId}`
+    `http://127.0.0.1:8000/wallet/${userId}`
   );
 
   const walletData = await walletRes.json();
@@ -131,7 +131,7 @@ try {
   );
 
   const txRes = await fetch(
-    `https://fintech-backend-nmk7.onrender.com/transactions/${userId}`
+    `http://127.0.0.1:8000/transactions/${userId}`
   );
 
   const txData = await txRes.json();

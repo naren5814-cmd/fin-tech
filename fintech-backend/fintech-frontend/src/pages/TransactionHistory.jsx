@@ -29,7 +29,7 @@ function TransactionHistory() {
 
     try {
       setLoading(true);
-      const res = await fetch(`https://fintech-backend-nmk7.onrender.com/transactions/${userId}`);
+      const res = await fetch(`http://127.0.0.1:8000/transactions/${userId}`);
       const data = await res.json();
 
       console.log("HISTORY DATA RECEIVED:", data);
@@ -104,7 +104,7 @@ const handleSend = async () => {
     const my_uuid = self.crypto.randomUUID(); // Fresh ID for every click
 
     try {
-        const res = await fetch("https://fintech-backend-nmk7.onrender.com/send-money", {
+        const res = await fetch("http://127.0.0.1:8000/send-money", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 

@@ -40,7 +40,7 @@ function WalletCard() {
       // =========================
 
       const walletRes = await fetch(
-        `https://fintech-backend-nmk7.onrender.com/wallet/${userId}`
+        `http://127.0.0.1:8000/wallet/${userId}`
       );
 
       const walletData = await walletRes.json();
@@ -67,7 +67,7 @@ function WalletCard() {
       // =========================
 
       const txRes = await fetch(
-        `https://fintech-backend-nmk7.onrender.com/transactions/${userId}`
+        `http://127.0.0.1:8000/transactions/${userId}`
       );
 
       const txData = await txRes.json();

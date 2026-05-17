@@ -40,7 +40,7 @@ function Signup() {
       setLoading(true);
 
       const res = await fetch(
-        "https://fintech-backend-nmk7.onrender.com/signup",
+        "http://127.0.0.1:8000/signup",
         {
           method: "POST",
           headers: {

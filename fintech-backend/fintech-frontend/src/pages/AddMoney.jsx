@@ -79,7 +79,7 @@ function AddMoney() {
       console.log("ADD MONEY HIT");
 
       const res = await fetch(
-        "https://fintech-backend-nmk7.onrender.com/add-money",
+        "http://127.0.0.1:8000/add-money",
         {
           method: "POST",
 

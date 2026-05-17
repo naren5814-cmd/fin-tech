@@ -22,7 +22,7 @@ const handleSubmit = async (e) => {
   try {
     setLoading(true);
 
-    const res = await fetch("https://fintech-backend-nmk7.onrender.com/login", {
+    const res = await fetch("http://127.0.0.1:8000/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

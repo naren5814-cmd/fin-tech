@@ -39,7 +39,7 @@ function MobileInput({
         setChecking(true);
 
         const res = await fetch(
-          `https://fintech-backend-nmk7.onrender.com/user-by-mobile/${mobile}`
+          `http://127.0.0.1:8000/user-by-mobile/${mobile}`
         );
 
         const data = await res.json();

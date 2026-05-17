@@ -56,7 +56,7 @@ function Account() {
 
     try {
       const res = await fetch(
-        "https://fintech-backend-nmk7.onrender.com/account-details",
+        "http://127.0.0.1:8000/account-details",
         {
           method: "POST",
           headers: {
